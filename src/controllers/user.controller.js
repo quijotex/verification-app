@@ -3,6 +3,7 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const sendEmail = require('../utils/sendEmail')
 const EmailCode = require('../models/EmailCode');
+const jwt = require('jsonwebtoken')
 
 const getAll = catchError(async(req, res) => {
     const results = await User.findAll();
@@ -10,7 +11,7 @@ const getAll = catchError(async(req, res) => {
 });
 
 const create = catchError(async(req, res) => {
-    const { firstName, lastName, email, password, country, image } = req.body;
+    const { firstName, lastName, email, password, country, image, frontBaseUrl } = req.body;
     const encryptedPassword = await bcrypt.hash(password, 10);
     const result = await User.create({
         firstName, 
@@ -24,7 +25,7 @@ const create = catchError(async(req, res) => {
     const code = require('crypto').randomBytes(32).toString("hex");
     const link = `${frontBaseUrl}/auth/verify_email/${code}`;
 
-    await EmailCode.create({
+    await EmailCode.create({  //Con esto alamcenamos el id del user y el code creado en la tabla EmailCode
         code,
         userId: result.id,
       });
@@ -80,12 +81,35 @@ const verifyEmail = catchError(async (req, res) => {
     return res.json(user);
   });
 
+  const login = catchError(async (req, res) => {
+    const { email, password } = req.body;
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
+    if (!user.isVerified)
+      return res.status(401).json({ message: "User must be verified" });
+    const token = jwt.sign(
+      { user },
+      process.env.TOKEN_SECRET,
+      { expiresIn: "1d" },
+    );
+    return res.json({ user, token });
+  });
+  
+  const getLoggedUser = catchError(async (req, res) => {
+    const user = req.user;
+    return res.json(user);
+  })
+
 module.exports = {
     getAll,
     create,
     getOne,
     remove,
     update,
-    verifyEmail
+    verifyEmail,
+    login,
+    getLoggedUser
    
 }
