@@ -10,7 +10,7 @@ const getAll = catchError(async(req, res) => {
 });
 
 const create = catchError(async(req, res) => {
-    const { firstName, lastName, email, password, country, image } = req.body;
+    const { firstName, lastName, email, password, country, image, frontBaseUrl } = req.body;
     const encryptedPassword = await bcrypt.hash(password, 10);
     const result = await User.create({
         firstName, 
@@ -34,10 +34,10 @@ const create = catchError(async(req, res) => {
     subject: "Verificate email for user app",
     html: `
       <h1>Hello ${firstName} ${lastName}</h1>
-      <b>Thanks for sign up in user app</b> <br>
+      <b>Thanks for signing up in user app</b> <br>
       <a href="${link}">${link}</a>
     `
-    
+
   });
    
     return res.status(201).json(result);
